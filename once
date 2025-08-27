@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -e
+
+echo "🔄 Updating package lists..."
+sudo apt update
+
+echo "⬆️ Upgrading installed packages..."
+sudo apt full-upgrade -y
+
+echo "🧹 Removing unused packages..."
+sudo apt autoremove --purge -y
+sudo apt clean
+
+echo "🐧 (Optional) Updating Raspberry Pi firmware..."
+if command -v rpi-eeprom-update &> /dev/null; then
+    sudo rpi-eeprom-update -a
+else
+    echo "rpi-eeprom-update not found (not needed on Ubuntu Server for Pi 5 with up-to-date kernel)."
+fi
+
+echo "Setting up firewall"
+
+apt install ufw
+ufw allow ssh
+ufw default deny incoming
+ufw default allow outgoing
+ufw enable
+ufw status verbose
+
+echo "SSD support"
+
+systemctl enable fstrim.timer
+systemctl start fstrim.timer
+
+echo "✅ System is up to date."
