@@ -1,0 +1,13 @@
+[Unit]
+Description=Jackett Daemon
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/jackett
+ExecStart=/opt/jackett/Jackett/jackett_launcher.sh
+Restart=always
+User=nestor
+Group=nestor
+
+[Install]
+WantedBy=multi-user.target

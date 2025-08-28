@@ -1,0 +1,16 @@
+[Unit]
+Description=Kodi Media Center
+After=systemd-user-sessions.service sound.target network-online.target
+Wants=network-online.target
+
+[Service]
+User=nestor
+Group=nestor
+PAMName=login
+TTYPath=/dev/tty1
+ExecStart=/usr/bin/kodi-standalone
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target
