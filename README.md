@@ -114,3 +114,11 @@ cp jackett.json ~/.local/share/qBittorrent/nova3/engines/
 The final step is to restart Qbittorrent and add the search plugin URL https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/jackett.py.
 
 All done, both downloading and searching!
+
+# Sound Out
+
+One may configure sound out with the config file
+
+```bash
+cp .asoundrc ~/
+```
