@@ -21,16 +21,16 @@ fi
 
 echo "Setting up firewall"
 
-apt install ufw
-ufw allow ssh
-ufw default deny incoming
-ufw default allow outgoing
-ufw enable
-ufw status verbose
+sudo apt install ufw
+sudo ufw allow ssh
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw enable
+sudo ufw status verbose
 
 echo "SSD support"
 
-systemctl enable fstrim.timer
-systemctl start fstrim.timer
+sudo systemctl enable fstrim.timer
+sudo systemctl start fstrim.timer
 
 echo "✅ System is up to date."
