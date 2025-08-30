@@ -6,71 +6,60 @@ On lounching pi for the first time with ubuntu server run this.
 sudo ./once
 ```
 
-# Kodi
-
-For videos
+# Plex
 
 ```bash
-sudo apt install kodi
+curl https://downloads.plex.tv/plex-keys/PlexSign.key | sudo apt-key add -
+echo deb https://downloads.plex.tv/repo/deb public main | sudo tee /etc/apt/sources.list.d/plexmediaserver.list
+sudo apt update
+sudo apt install plexmediaserver -y
+sudo systemctl enable plexmediaserver
+sudo systemctl start plexmediaserver
+sudo systemctl status plexmediaserver
+sudo ufw allow from 192.168.1.0/24 to any port 32400 proto tcp
 ```
 
-For kodi remote control (on pi os it's already installed)
+Then some messing around to claim the server. Important to access pi by ip directly, not alias.
+
+# Transmission
 
 ```bash
-sudo apt install cec-utils libcec-dev
-sudo usermod -aG video $(whoami)
+sudo apt install transmission-daemon -y
 ```
 
-Then to reboot
-
-To run kodi
+Temp fix
 
 ```bash
-kodi-standalone
+sudo sysctl -w net.core.rmem_max=4194304
+sudo sysctl -w net.core.wmem_max=1048576
 ```
 
-To set it up on startup
-
-Note: Update username and group in service
+And put to `/etc/sysctl.conf` for the permanent fix
 
 ```bash
-sudo cp kodi.service /etc/systemd/system/
-sudo systemctl enable --now kodi
-sudo systemctl status kodi
+net.core.rmem_max=4194304
+net.core.wmem_max=1048576
 ```
 
-# Torrent
 
-To setup torrent
-
-## Qbittorrent
-
-(This doesn't work on pi)
+Stop and change `/etc/transmission-daemon/settings.json` to test and hide once not needed
 
 ```bash
-sudo apt install qbittorrent-nox -y
+sudo systemctl stop transmission-daemon
 ```
 
-To set it up on startup
-
-Note: Update username and group in service
-
-```bash
-sudo cp qbittorrent.service /etc/systemd/system/
-sudo systemctl enable --now qbittorrent
-sudo systemctl status qbittorrent
-```
-
-To allow PI 8080 to local network
+Need auth for both plex and transmission to have access
 
 ```
-sudo ufw allow from 192.168.1.0/24 to any port 8080 proto tcp
-sudo ufw status verbose
+sudo groupadd media
+sudo usermod -aG media plex
+sudo usermod -aG media debian-transmission
+sudo chown -R plex:media /var/lib/plexmediaserver/test
+sudo chmod -R 775 /var/lib/plexmediaserver/test
+sudo chmod g+s /var/lib/plexmediaserver/test
 ```
 
-Now opening `http://pi:8080` where `pi` is the pi host (or an alias in `/etc/hosts`) will show the qbittorrent UI. The user is `admin` and the password may be found from `sudo systemctl status qbittorrent` output (or it's `adminadmin` for pi).
-
-## Jackett
+# Jackett
 
 To manually install
 
@@ -116,11 +105,3 @@ cp jackett.json ~/.local/share/qBittorrent/nova3/engines/
 The final step is to restart Qbittorrent and add the search plugin URL https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/jackett.py.
 
 All done, both downloading and searching!
-
-# Sound Out
-
-One may configure sound out with the config file
-
-```bash
-cp .asoundrc ~/
-```
