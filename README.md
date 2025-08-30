@@ -21,6 +21,29 @@ sudo ufw allow from 192.168.1.0/24 to any port 32400 proto tcp
 
 Then some messing around to claim the server. Important to access pi by ip directly, not alias.
 
+To discover token
+
+```
+sudo cat /var/lib/plexmediaserver/Library/Application\ Support/Plex\ Media\ Server/Preferences.xml | grep PlexOnlineToken
+```
+
+To refresh where 3 is library ID from
+
+```
+curl "http://127.0.0.1:32400/library/sections?X-Plex-Token=YOUR_TOKEN"
+```
+
+```
+curl "http://127.0.0.1:32400/library/sections/3/refresh?X-Plex-Token=YOUR_TOKEN"
+```
+
+And to cron in a script
+
+```
+crontab -e
+*/10 * * * * /home/nestor/refresh_plex.sh >> /home/nestor/plex_refresh.log 2>&1
+```
+
 # Transmission
 
 ```bash
