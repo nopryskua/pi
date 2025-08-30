@@ -14,7 +14,7 @@ For videos
 sudo apt install kodi
 ```
 
-For kodi remote control
+For kodi remote control (on pi os it's already installed)
 
 ```bash
 sudo apt install cec-utils libcec-dev
@@ -45,6 +45,8 @@ To setup torrent
 
 ## Qbittorrent
 
+(This doesn't work on pi)
+
 ```bash
 sudo apt install qbittorrent-nox -y
 ```
@@ -66,7 +68,7 @@ sudo ufw allow from 192.168.1.0/24 to any port 8080 proto tcp
 sudo ufw status verbose
 ```
 
-Now opening `http://pi:8080` where `pi` is the pi host (or an alias in `/etc/hosts`) will show the qbittorrent UI. The user is `admin` and the password may be found from `sudo systemctl status qbittorrent` output.
+Now opening `http://pi:8080` where `pi` is the pi host (or an alias in `/etc/hosts`) will show the qbittorrent UI. The user is `admin` and the password may be found from `sudo systemctl status qbittorrent` output (or it's `adminadmin` for pi).
 
 ## Jackett
 
