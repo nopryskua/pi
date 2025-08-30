@@ -59,6 +59,13 @@ sudo chmod -R 775 /var/lib/plexmediaserver/test
 sudo chmod g+s /var/lib/plexmediaserver/test
 ```
 
+Firewall
+
+```
+sudo ufw allow from 192.168.1.0/24 to any port 9091 proto tcp
+sudo ufw status verbose
+```
+
 # Jackett
 
 To manually install
