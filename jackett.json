@@ -1,6 +1,0 @@
-{
-    "api_key": "YOUR_API_KEY",
-    "url": "http://127.0.0.1:9117",
-    "tracker_first": false,
-    "thread_count": 20
-}

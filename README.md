@@ -135,3 +135,35 @@ cp jackett.json ~/.local/share/qBittorrent/nova3/engines/
 The final step is to restart Qbittorrent and add the search plugin URL https://raw.githubusercontent.com/qbittorrent/search-plugins/master/nova3/engines/jackett.py.
 
 All done, both downloading and searching!
+
+# Docker
+
+```bash
+sudo apt remove docker docker-engine docker.io containerd runc
+sudo apt update
+sudo apt install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable docker --now
+sudo groupadd docker || true
+sudo usermod -aG docker $USER
+newgrp docker
+docker run hello-world
+```
+
+# Flaresolverr
+
+Add the URL to Jackett
+
+```bash
+docker run -d --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
+```
