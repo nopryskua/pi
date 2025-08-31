@@ -167,3 +167,9 @@ Add the URL to Jackett
 ```bash
 docker run -d --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
 ```
+
+Now more indexers work
+
+```bash
+curl "http://localhost:9117/api/v2.0/indexers/all/results?apikey=$JACKETT_API_KEY&Query=4k&Limit=10"
+```
