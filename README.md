@@ -173,3 +173,23 @@ Now more indexers work
 ```bash
 curl "http://localhost:9117/api/v2.0/indexers/all/results?apikey=$JACKETT_API_KEY&Query=4k&Limit=10"
 ```
+
+# Persistent Journalctl
+
+```bash
+# Make sure the base dir exists and has the right perms
+sudo mkdir -p /var/log/journal
+sudo chown root:systemd-journal /var/log/journal
+sudo chmod 2755 /var/log/journal
+
+# Create machine-id based subdir (same ID as in /etc/machine-id)
+sudo mkdir -p /var/log/journal/$(cat /etc/machine-id)
+sudo chown root:systemd-journal /var/log/journal/$(cat /etc/machine-id)
+sudo chmod 2755 /var/log/journal/$(cat /etc/machine-id)
+
+# Restart journald
+sudo systemctl restart systemd-journald
+
+# Flush
+sudo journalctl --flush
+```
