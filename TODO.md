@@ -9,3 +9,5 @@ Run on boot
 ```bash
 docker run -d --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
 ```
+
+Auto-delete old files
