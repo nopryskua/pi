@@ -193,3 +193,28 @@ sudo systemctl restart systemd-journald
 # Flush
 sudo journalctl --flush
 ```
+
+# For History
+
+Put to `~/.bashrc`
+
+```bash
+# ~/.bashrc additions for persistent, "infinite" history
+
+# Don’t truncate history
+export HISTSIZE=
+export HISTFILESIZE=
+
+# Append instead of overwrite history on shell exit
+shopt -s histappend
+
+# Save after every command (not just when the shell exits)
+PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"
+
+# Add timestamps
+export HISTTIMEFORMAT="%F %T "
+
+# Ignore duplicate commands and trivial ones
+export HISTCONTROL=ignoredups:erasedups
+export HISTIGNORE="ls:cd:exit:pwd:clear"
+```
