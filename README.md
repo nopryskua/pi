@@ -165,7 +165,11 @@ docker run hello-world
 Add the URL to Jackett
 
 ```bash
-docker run -d --name flaresolverr -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest
+docker run -d \
+  --name flaresolverr \
+  -p 8191:8191 \
+  --restart unless-stopped \
+  ghcr.io/flaresolverr/flaresolverr:latest
 ```
 
 Now more indexers work
