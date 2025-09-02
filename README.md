@@ -41,7 +41,7 @@ And to cron in a script
 
 ```
 crontab -e
-*/10 * * * * /home/nestor/refresh_plex.sh >> /home/nestor/plex_refresh.log 2>&1
+*/10 * * * * /home/nestor/.refresh_plex.sh
 ```
 
 # Transmission
@@ -63,7 +63,6 @@ And put to `/etc/sysctl.conf` for the permanent fix
 net.core.rmem_max=4194304
 net.core.wmem_max=1048576
 ```
-
 
 Stop and change `/etc/transmission-daemon/settings.json` to test and hide once not needed
 
@@ -221,4 +220,12 @@ export HISTTIMEFORMAT="%F %T "
 # Ignore duplicate commands and trivial ones
 export HISTCONTROL=ignoredups:erasedups
 export HISTIGNORE="ls:cd:exit:pwd:clear"
+```
+
+## Network check
+
+```bash
+cp .check_remote.sh ~/
+crontab -e
+*/3 * * * * /home/nestor/.check_remote.sh
 ```
