@@ -13,10 +13,14 @@ TEMPLATE = """
 <title>Jackett Search</title>
 <h1>Jackett Torrent Search</h1>
 <form method="post">
-  <input name="query" placeholder="Search query" required style="width:200px">
-  <input name="min_size" placeholder="Min GB" type="number" step="0.1" style="width:80px">
-  <input name="max_size" placeholder="Max GB" type="number" step="0.1" style="width:80px">
-  <input name="min_seeders" placeholder="Min seeders" type="number" style="width:80px">
+  <input name="query" placeholder="Search query" required style="width:200px"
+         value="{{ request.form.get('query', '') }}">
+  <input name="min_size" placeholder="Min GB" type="number" step="0.1" style="width:80px"
+         value="{{ request.form.get('min_size', '') }}">
+  <input name="max_size" placeholder="Max GB" type="number" step="0.1" style="width:80px"
+         value="{{ request.form.get('max_size', '') }}">
+  <input name="min_seeders" placeholder="Min seeders" type="number" style="width:80px"
+         value="{{ request.form.get('min_seeders', '') }}">
   <button type="submit">Search</button>
 </form>
 
