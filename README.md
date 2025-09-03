@@ -222,10 +222,18 @@ export HISTCONTROL=ignoredups:erasedups
 export HISTIGNORE="ls:cd:exit:pwd:clear"
 ```
 
-## Network check
+# Network check
 
 ```bash
 cp .check_remote.sh ~/
 crontab -e
 */3 * * * * /home/nestor/.check_remote.sh
+```
+
+# Query
+
+To conveniently query from Jackett
+
+```bash
+./query.py --query "4k"
 ```
