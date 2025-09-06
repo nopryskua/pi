@@ -76,9 +76,9 @@ Need auth for both plex and transmission to have access
 sudo groupadd media
 sudo usermod -aG media plex
 sudo usermod -aG media debian-transmission
-sudo chown -R plex:media /var/lib/plexmediaserver/test
-sudo chmod -R 775 /var/lib/plexmediaserver/test
-sudo chmod g+s /var/lib/plexmediaserver/test
+sudo chown -R plex:media /var/lib/plexmediaserver/Movies
+sudo chmod -R 775 /var/lib/plexmediaserver/Movies
+sudo chmod g+s /var/lib/plexmediaserver/Movies
 ```
 
 Firewall

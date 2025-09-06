@@ -1,3 +1,5 @@
-Auto-delete old files
+Auto-delete old files automatically
 
-Unbound for pi hole
+Unbound for pi hole/adguard
+
+Magnet click initiates download and redirects
