@@ -237,3 +237,34 @@ To conveniently query from Jackett
 ```bash
 ./query.py --query "4k"
 ```
+
+# Spotify
+
+```bash
+wget https://github.com/Spotifyd/spotifyd/releases/download/v0.4.1/spotifyd-linux-aarch64-default.tar.gz
+tar -xvzf spotifyd-linux-aarch64-default.tar.gz
+sudo chmod +x spotifyd
+sudo mv spotifyd /usr/local/bin/
+sudo apt install libpulse0
+rm -rf spotifyd-linux-aarch64-default.tar.gz
+```
+
+```bash
+# Allow mDNS (UDP 5353) from your LAN
+sudo ufw allow from 192.168.1.0/24 to any port 5353 proto udp
+
+# Allow zeroconf TCP port from your LAN (or some other port if configured differently)
+sudo ufw allow from 192.168.1.0/24 to any port 1234 proto tcp
+```
+
+There is a need for a workaround to add the following line `/etc/hosts`.
+
+```bash
+0.0.0.0                 apresolve.spotify.com
+```
+
+Then test the playback by using Spotify UI, selecting the new device, and playing a song.
+
+```bash
+spotifyd --no-daemon --verbose --zeroconf-port=1234
+```
