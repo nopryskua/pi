@@ -238,6 +238,22 @@ To conveniently query from Jackett
 ./query.py --query "4k"
 ```
 
+# FZF
+
+```bash
+sudo apt install fzf
+```
+
+And add to `~/.bashrc`
+
+```bash
+# fzf setup
+# Auto-completion and keybindings
+if [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
+  source /usr/share/doc/fzf/examples/key-bindings.bash
+fi
+```
+
 # Spotify
 
 ```bash
@@ -268,3 +284,41 @@ Then test the playback by using Spotify UI, selecting the new device, and playin
 ```bash
 spotifyd --no-daemon --verbose --zeroconf-port=1234
 ```
+
+# AdGuard
+
+```bash
+# For autonomous DNS (optional)
+sudo nmcli con mod "preconfigured" ipv4.ignore-auto-dns yes
+sudo nmcli con mod "preconfigured" ipv4.dns "9.9.9.9"
+sudo nmcli con up "preconfigured"
+dig google.com | grep SERVER
+
+# For static IP
+sudo nmcli con mod "preconfigured" ipv4.addresses 192.168.1.50/24
+sudo nmcli con mod "preconfigured" ipv4.gateway 192.168.1.1
+sudo nmcli con mod "preconfigured" ipv4.method manual
+sudo nmcli con up "preconfigured"
+
+# Then SSH to the new IP 192.168.1.50
+
+# Now AdGuard
+sudo mkdir -p /etc/adguardhome/work
+sudo mkdir -p /etc/adguardhome/conf
+
+docker run -d \
+  --name adguardhome \
+  --restart unless-stopped \
+  --network host \
+  -v /etc/adguardhome/work:/opt/adguardhome/work \
+  -v /etc/adguardhome/conf:/opt/adguardhome/conf \
+  adguard/adguardhome
+
+# Firewall
+sudo ufw allow from 192.168.1.0/24 to any port 53 proto tcp
+sudo ufw allow from 192.168.1.0/24 to any port 53 proto udp
+sudo ufw allow from 192.168.1.0/24 to any port 3000 proto tcp
+sudo ufw allow from 192.168.1.0/24 to any port 80 proto tcp
+```
+
+Finally, use PI IP as DHCP server DNS of your router (not the router DNS itself).
