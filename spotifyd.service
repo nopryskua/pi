@@ -1,0 +1,23 @@
+[Unit]
+Description=Spotifyd Daemon (PulseAudio, f32)
+After=pulseaudio.service
+Wants=pulseaudio.service
+
+[Service]
+ExecStart=/usr/local/bin/spotifyd \
+  --no-daemon \
+  --backend=pulseaudio \
+  --audio-format=f32 \
+  --bitrate=320 \
+  --volume-normalisation=false \
+  --device-name="PI" \
+  --use-mpris=false \
+  --initial-volume=100 \
+  --autoplay=true \
+  --mixer=PCM \
+  --zeroconf-port=1234
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

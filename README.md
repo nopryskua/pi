@@ -254,6 +254,27 @@ if [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
 fi
 ```
 
+# PulseAudio
+
+For slightly better quality
+
+```bash
+# Install
+sudo apt install pulseaudio pulseaudio-utils
+
+# Since it's user service, linger
+sudo loginctl enable-linger nestor
+loginctl user-status nestor
+
+# Enable
+systemctl --user enable pulseaudio.service
+systemctl --user enable pulseaudio.socket
+systemctl --user start pulseaudio.service
+
+# Check
+systemctl --user status pulseaudio.service
+```
+
 # Spotify
 
 ```bash
@@ -279,10 +300,25 @@ There is a need for a workaround to add the following line `/etc/hosts`.
 0.0.0.0                 apresolve.spotify.com
 ```
 
+It's also necessary to add the same to AdGuard DNS overrides since it overrides the override.
+
 Then test the playback by using Spotify UI, selecting the new device, and playing a song.
 
 ```bash
 spotifyd --no-daemon --verbose --zeroconf-port=1234
+```
+
+Now configure a service.
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp spotifyd.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable spotifyd.service
+systemctl --user start spotifyd.service
+
+# Check
+systemctl --user status spotifyd.service
 ```
 
 # AdGuard
