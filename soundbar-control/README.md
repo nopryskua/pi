@@ -30,4 +30,31 @@ curl http://localhost:5050/mute
 
 curl -X POST -H "Content-Type: application/json" -d '{"mute": true}' http://localhost:5050/mute
 curl -X POST -H "Content-Type: application/json" -d '{"mute": false}' http://localhost:5050/mute
+
+...
+```
+
+# Desired Config
+
+```bash
+# Check if awake
+curl http://localhost:5050/power
+
+# Check "audio_source", not playing if "NO SIGNAL"
+curl http://localhost:5050/status
+
+# Awake
+curl -X POST http://localhost:5050/wake
+
+# Mid volume
+curl -X POST -H "Content-Type: application/json" -d '{"volume":12}' http://localhost:5050/volume
+
+# No EQ
+curl -X POST -H "Content-Type: application/json" -d '{"eq":0}' http://localhost:5050/eq
+
+# No mute
+curl -X POST -H "Content-Type: application/json" -d '{"mute": false}' http://localhost:5050/mute
+
+# HDMI
+curl -X POST -H "Content-Type: application/json" -d '{"func":6}' http://localhost:5050/func
 ```

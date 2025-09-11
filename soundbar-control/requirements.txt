@@ -1,2 +1,3 @@
-pycryptodome
+git+https://github.com/google/python-temescal.git
 flask
+pychromecast

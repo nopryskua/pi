@@ -326,7 +326,7 @@ systemctl --user status spotifyd.service
 ```bash
 # For autonomous DNS (optional)
 sudo nmcli con mod "preconfigured" ipv4.ignore-auto-dns yes
-sudo nmcli con mod "preconfigured" ipv4.dns "9.9.9.9"
+sudo nmcli con mod "preconfigured" ipv4.dns "1.1.1.1"
 sudo nmcli con up "preconfigured"
 dig google.com | grep SERVER
 
