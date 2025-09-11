@@ -9,3 +9,5 @@ Run spotifyd
 Reverse engineer soundbar wake and source change
 
 Soundbar power on/off
+
+Hook wake and correct song on spotifyd playing
