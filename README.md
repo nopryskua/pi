@@ -358,3 +358,19 @@ sudo ufw allow from 192.168.1.0/24 to any port 80 proto tcp
 ```
 
 Finally, use PI IP as DHCP server DNS of your router (not the router DNS itself).
+
+# Misc utils (optional)
+
+```bash
+# For testing playback
+sudo apt install mpv
+
+# For checking capabilities
+sudo apt install read-edid edid-decode
+
+# To check HDMI devices
+aplay -l
+
+# To check what soundbar supports
+cat /sys/class/drm/card1-HDMI-A-2/edid | edid-decode
+```
