@@ -15,7 +15,8 @@ ExecStart=/usr/local/bin/spotifyd \
   --initial-volume=100 \
   --autoplay=true \
   --mixer=PCM \
-  --zeroconf-port=1234
+  --zeroconf-port=1234 \
+  --on-song-change-hook=/home/nestor/.wake-soundbar.sh
 Restart=always
 RestartSec=5
 
