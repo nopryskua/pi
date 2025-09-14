@@ -12,7 +12,7 @@ https://github.com/google/python-temescal/blob/79e34f07517bd42d1d6fae0aa1d3a5ddf
 
 ```bash
 docker build -t soundbar-server .
-docker run --network=host -e SOUNDBAR_IP=192.168.1.113 soundbar-server
+docker run -d --network=host --restart unless-stopped -e SOUNDBAR_IP=192.168.1.113 soundbar-server
 ```
 
 Now the server is listening at `5050`.

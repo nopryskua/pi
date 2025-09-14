@@ -374,3 +374,44 @@ aplay -l
 # To check what soundbar supports
 cat /sys/class/drm/card1-HDMI-A-2/edid | edid-decode
 ```
+
+# Mopidy Player
+
+```bash
+# Getting the repo
+sudo mkdir -p /etc/apt/keyrings
+sudo wget -q -O /etc/apt/keyrings/mopidy-archive-keyring.gpg \
+  https://apt.mopidy.com/mopidy-archive-keyring.gpg
+
+sudo wget -q -O /etc/apt/sources.list.d/mopidy.sources https://apt.mopidy.com/bookworm.sources
+
+# Installing the main server and the local scraper
+sudo apt install mopidy
+sudo apt install mopidy-local
+
+# Installing the UI
+sudo apt install python3-pip
+sudo python3 -m pip install --break-system-packages Mopidy-Iris
+
+# To access iris UI
+sudo ufw allow from 192.168.1.0/24 to any port 6680 proto tcp
+
+# Config
+sudo cp mopidy.conf /etc/mopidy/
+sudo chown root:root /etc/mopidy/mopidy.conf
+sudo chmod 644 /etc/mopidy/mopidy.conf
+
+# Access to media folder
+sudo usermod -aG media mopidy
+
+# Service
+sudo systemctl enable mopidy
+sudo systemctl start mopidy
+systemctl status mopidy
+
+# Scan
+sudo crontab -e
+0 3 * * * /usr/sbin/mopidyctl local scan >> /var/log/mopidy/local-scan.log 2>&1
+```
+
+Now `http://pi:6680/iris` does the job.
