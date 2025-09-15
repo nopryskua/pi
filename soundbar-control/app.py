@@ -1,4 +1,6 @@
 import os
+import time
+import threading
 from flask import Flask, jsonify, request
 import temescal
 import pychromecast
@@ -22,6 +24,12 @@ speaker_state = {
     "audio_source": None,
     "connect_status": None
 }
+
+# --- Global connection state ---
+soundbar = None
+connection_lock = threading.Lock()
+last_connection_attempt = 0
+CONNECTION_RETRY_DELAY = 5  # seconds between reconnection attempts
 
 # --- Callback function for temescal responses ---
 def speaker_callback(data):
@@ -77,6 +85,44 @@ def speaker_callback(data):
     except Exception as e:
         print(f"Error in speaker callback: {e}")
 
+# --- Connection management functions ---
+def create_soundbar_connection():
+    """Create a new temescal connection to the soundbar"""
+    global soundbar
+    try:
+        soundbar = temescal.temescal(SOUNDBAR_IP, callback=speaker_callback)
+        print(f"Connected to soundbar at {SOUNDBAR_IP}")
+        return True
+    except Exception as e:
+        print(f"Failed to connect to soundbar: {e}")
+        soundbar = None
+        return False
+
+def ensure_connection():
+    """Ensure we have a valid connection to the soundbar, reconnect if needed"""
+    global soundbar, last_connection_attempt
+    
+    with connection_lock:
+        current_time = time.time()
+        
+        # If we have a connection, try to use it
+        if soundbar is not None:
+            try:
+                # Test the connection by making a simple request
+                soundbar.get_info()
+                return True
+            except Exception as e:
+                print(f"Connection test failed: {e}")
+                soundbar = None
+        
+        # If no connection or connection failed, try to reconnect
+        if soundbar is None and (current_time - last_connection_attempt) >= CONNECTION_RETRY_DELAY:
+            print("Attempting to reconnect to soundbar...")
+            last_connection_attempt = current_time
+            return create_soundbar_connection()
+        
+        return soundbar is not None
+
 # --- Wake function using Google Cast ---
 def wake_soundbar(ip):
     """Wake up the soundbar using Google Cast protocol"""
@@ -104,17 +150,12 @@ def wake_soundbar(ip):
         return False
 
 # --- Initialize temescal client ---
-try:
-    soundbar = temescal.temescal(SOUNDBAR_IP, callback=speaker_callback)
-    print(f"Connected to soundbar at {SOUNDBAR_IP}")
-except Exception as e:
-    print(f"Failed to connect to soundbar: {e}")
-    soundbar = None
+create_soundbar_connection()
 
 # --- Flask routes ---
 @app.route("/volume", methods=["GET"])
 def get_volume():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current volume from speaker
@@ -122,11 +163,12 @@ def get_volume():
         # Return the last known volume from our state
         return jsonify({"volume": speaker_state["volume"]})
     except Exception as e:
+        print(f"Volume get error: {e}")
         return jsonify({"error": f"Failed to get volume: {str(e)}"}), 500
 
 @app.route("/volume", methods=["POST"])
 def set_volume():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     vol = request.json.get("volume")
     if vol is not None and 0 <= vol <= 100:
@@ -135,12 +177,13 @@ def set_volume():
             speaker_state["volume"] = vol  # Update local state
             return jsonify({"volume": vol})
         except Exception as e:
+            print(f"Volume set error: {e}")
             return jsonify({"error": f"Failed to set volume: {str(e)}"}), 500
     return jsonify({"error": "Invalid volume"}), 400
 
 @app.route("/mute", methods=["GET"])
 def get_mute():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current mute status from speaker
@@ -148,11 +191,12 @@ def get_mute():
         # Return the last known mute status from our state
         return jsonify({"mute": speaker_state["mute"]})
     except Exception as e:
+        print(f"Mute get error: {e}")
         return jsonify({"error": f"Failed to get mute status: {str(e)}"}), 500
 
 @app.route("/mute", methods=["POST"])
 def set_mute():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     enable = request.json.get("mute")
     if isinstance(enable, bool):
@@ -161,12 +205,13 @@ def set_mute():
             speaker_state["mute"] = enable  # Update local state
             return jsonify({"mute": enable})
         except Exception as e:
+            print(f"Mute set error: {e}")
             return jsonify({"error": f"Failed to set mute: {str(e)}"}), 500
     return jsonify({"error": "Invalid mute value"}), 400
 
 @app.route("/eq", methods=["GET"])
 def get_eq():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current equalizer state from speaker
@@ -174,11 +219,12 @@ def get_eq():
         # Return the last known eq state from our state
         return jsonify({"eq": speaker_state["eq"]})
     except Exception as e:
+        print(f"EQ get error: {e}")
         return jsonify({"error": f"Failed to get equalizer state: {str(e)}"}), 500
 
 @app.route("/eq", methods=["POST"])
 def set_eq():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     eq_value = request.json.get("eq")
     if eq_value is not None and 0 <= eq_value <= 18:  # Based on equalisers list
@@ -187,12 +233,13 @@ def set_eq():
             speaker_state["eq"] = eq_value  # Update local state
             return jsonify({"eq": eq_value})
         except Exception as e:
+            print(f"EQ set error: {e}")
             return jsonify({"error": f"Failed to set equalizer: {str(e)}"}), 500
     return jsonify({"error": "Invalid equalizer value (0-18)"}), 400
 
 @app.route("/func", methods=["GET"])
 def get_func():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current function from speaker
@@ -200,11 +247,12 @@ def get_func():
         # Return the last known func state from our state
         return jsonify({"func": speaker_state["func"]})
     except Exception as e:
+        print(f"Func get error: {e}")
         return jsonify({"error": f"Failed to get function: {str(e)}"}), 500
 
 @app.route("/func", methods=["POST"])
 def set_func():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     func_value = request.json.get("func")
     if func_value is not None and 0 <= func_value <= 19:  # Based on functions list
@@ -213,12 +261,13 @@ def set_func():
             speaker_state["func"] = func_value  # Update local state
             return jsonify({"func": func_value})
         except Exception as e:
+            print(f"Func set error: {e}")
             return jsonify({"error": f"Failed to set function: {str(e)}"}), 500
     return jsonify({"error": "Invalid function value (0-19)"}), 400
 
 @app.route("/play", methods=["GET"])
 def get_play():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current playback info from speaker
@@ -226,11 +275,12 @@ def get_play():
         # Return the last known play info from our state
         return jsonify({"play_info": speaker_state["play_info"]})
     except Exception as e:
+        print(f"Play get error: {e}")
         return jsonify({"error": f"Failed to get playback info: {str(e)}"}), 500
 
 @app.route("/settings", methods=["GET"])
 def get_settings():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current settings from speaker
@@ -238,11 +288,12 @@ def get_settings():
         # Return the last known settings from our state
         return jsonify({"settings": speaker_state["settings"]})
     except Exception as e:
+        print(f"Settings get error: {e}")
         return jsonify({"error": f"Failed to get settings: {str(e)}"}), 500
 
 @app.route("/product", methods=["GET"])
 def get_product():
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request product info from speaker
@@ -250,6 +301,7 @@ def get_product():
         # Return the last known product info from our state
         return jsonify({"product_info": speaker_state["product_info"]})
     except Exception as e:
+        print(f"Product get error: {e}")
         return jsonify({"error": f"Failed to get product info: {str(e)}"}), 500
 
 @app.route("/wake", methods=["POST"])
@@ -267,7 +319,7 @@ def wake():
 @app.route("/status", methods=["GET"])
 def get_status():
     """Get comprehensive status of the soundbar"""
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current status from speaker
@@ -288,18 +340,20 @@ def get_status():
             "settings": speaker_state["settings"]
         })
     except Exception as e:
+        print(f"Status get error: {e}")
         return jsonify({"error": f"Failed to get status: {str(e)}"}), 500
 
 @app.route("/power", methods=["GET"])
 def get_power():
     """Get power status of the soundbar"""
-    if soundbar is None:
+    if not ensure_connection():
         return jsonify({"error": "Soundbar not connected"}), 500
     try:
         # Request current status from speaker
         soundbar.get_info()
         return jsonify({"power_status": speaker_state["power_status"]})
     except Exception as e:
+        print(f"Power get error: {e}")
         return jsonify({"error": f"Failed to get power status: {str(e)}"}), 500
 
 if __name__ == "__main__":
