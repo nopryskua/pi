@@ -397,21 +397,21 @@ sudo python3 -m pip install --break-system-packages Mopidy-Iris
 sudo ufw allow from 192.168.1.0/24 to any port 6680 proto tcp
 
 # Config
-sudo cp mopidy.conf /etc/mopidy/
-sudo chown root:root /etc/mopidy/mopidy.conf
-sudo chmod 644 /etc/mopidy/mopidy.conf
+cp mopidy.conf ~/.config/mopidy/
 
 # Access to media folder
 sudo usermod -aG media mopidy
 
 # Service
-sudo systemctl enable mopidy
-sudo systemctl start mopidy
-systemctl status mopidy
+cp mopidy.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable mopidy
+systemctl --user start mopidy
+systemctl --user status mopidy
 
 # Scan
-sudo crontab -e
-0 3 * * * /usr/sbin/mopidyctl local scan >> /var/log/mopidy/local-scan.log 2>&1
+crontab -e
+0 3 * * * /usr/bin/mopidy local scan
 ```
 
 Now `http://pi:6680/iris` does the job.
