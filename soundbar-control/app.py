@@ -123,31 +123,38 @@ def ensure_connection():
         
         return soundbar is not None
 
-# --- Wake function using Google Cast ---
-def wake_soundbar(ip):
-    """Wake up the soundbar using Google Cast protocol"""
-    try:
-        host = (ip, 8009, None, None, None)
-        cast = pychromecast.get_chromecast_from_host(host)
-        cast.wait()
+def wake_soundbar(ip, retries=3, delay=2):
+    """Wake up the soundbar using Google Cast protocol with retries"""
+    attempt = 0
+    while attempt < retries:
+        try:
+            print(f"Attempt {attempt+1}/{retries} to wake soundbar...")
+            host = (ip, 8009, None, None, None)
+            cast = pychromecast.get_chromecast_from_host(host)
+            cast.wait()
 
-        # Launch the Default Media Receiver app
-        cast.start_app("CC1AD845")  # App ID for Default Media Receiver
-        print("Launched Default Media Receiver")
+            # Launch the Default Media Receiver app
+            cast.start_app("CC1AD845")  # App ID for Default Media Receiver
+            print("Launched Default Media Receiver")
 
-        # Send a dummy media load (short mp3)
-        mc = cast.media_controller
-        mc.play_media(
-            "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-            "audio/mp3"
-        )
-        mc.block_until_active()
-        mc.stop()
-        print("Wake signal sent via dummy media")
-        return True
-    except Exception as e:
-        print(f"Failed to wake soundbar: {e}")
-        return False
+            # Send a dummy media load (short mp3)
+            mc = cast.media_controller
+            mc.play_media(
+                "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+                "audio/mp3"
+            )
+            mc.block_until_active()
+            mc.stop()
+            print("Wake signal sent via dummy media")
+            return True
+        except Exception as e:
+            print(f"Failed to wake soundbar on attempt {attempt+1}: {e}")
+            attempt += 1
+            if attempt < retries:
+                print(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+    print("All attempts to wake soundbar failed.")
+    return False
 
 # --- Initialize temescal client ---
 create_soundbar_connection()
@@ -303,6 +310,33 @@ def get_product():
     except Exception as e:
         print(f"Product get error: {e}")
         return jsonify({"error": f"Failed to get product info: {str(e)}"}), 500
+
+@app.route("/setup", methods=["POST"])
+def setup():
+    """Wake up the soundbar, set pleasant voice, no EQ, not muted, and HDMI output"""
+    try:
+        success = wake_soundbar(SOUNDBAR_IP)
+        if not success:
+            return jsonify({"error": "Failed to send wake signal"}), 500
+
+        if not ensure_connection():
+            return jsonify({"error": "Soundbar not connected"}), 500
+
+        soundbar.set_volume(12) # Pleasant
+        speaker_state["volume"] = 12  # Update local state
+
+        soundbar.set_eq(0) # Off
+        speaker_state["eq"] = 0  # Update local state
+
+        soundbar.set_mute(False)
+        speaker_state["mute"] = False  # Update local state
+
+        soundbar.set_func(6) # HDMI
+        speaker_state["func"] = 6  # Update local state
+
+        return jsonify({"message": "Setup successfully"})
+    except Exception as e:
+        return jsonify({"error": f"Failed to setup soundbar: {str(e)}"}), 500
 
 @app.route("/wake", methods=["POST"])
 def wake():

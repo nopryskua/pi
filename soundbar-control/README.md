@@ -11,8 +11,9 @@ https://github.com/google/python-temescal/blob/79e34f07517bd42d1d6fae0aa1d3a5ddf
 # Build & Run
 
 ```bash
-docker build -t soundbar-server .
-docker run -d --network=host --restart unless-stopped -e SOUNDBAR_IP=192.168.1.113 soundbar-server
+docker build -t soundbar-control .
+docker run -d --network=host --restart unless-stopped --name soundbar-control -e SOUNDBAR_IP=192.168.1.113 soundbar-control
+sudo ufw allow from 192.168.1.0/24 to any port 5050 proto tcp
 ```
 
 Now the server is listening at `5050`.
