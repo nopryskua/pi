@@ -473,8 +473,9 @@ def index():
         try:
             clauses = query.lower().split()
             raw_results = search(query)
-            results = []
-
+            
+            # First pass: filter and sort without resolving magnets (fast operations)
+            filtered_entries = []
             for entry in raw_results:
                 size_gb = human_size(entry.get("Size", 0))
                 if min_size and size_gb < min_size: continue
@@ -482,18 +483,44 @@ def index():
                 if min_seeders and entry.get("Seeders", 0) < min_seeders: continue
                 title = entry.get("Title", "").lower()
                 if not all(c in title for c in clauses): continue
-                magnet = resolve_magnet(entry)
-                if not magnet: continue
-                results.append({
+                
+                # Store entry data without resolving magnet yet
+                filtered_entries.append({
+                    "entry": entry,
                     "Title": entry.get("Title", "N/A"),
                     "SizeGB": size_gb,
                     "Seeders": entry.get("Seeders", 0),
-                    "Peers": entry.get("Peers", 0),
-                    "Magnet": magnet
+                    "Peers": entry.get("Peers", 0)
                 })
             
-            # Sort results by seed count in descending order (highest first)
-            results.sort(key=lambda x: x["Seeders"], reverse=True)
+            # Sort by seed count in descending order (highest first)
+            filtered_entries.sort(key=lambda x: x["Seeders"], reverse=True)
+            
+            # Deduplicate entries with same title and peer count
+            seen_entries = set()
+            deduplicated_entries = []
+            for item in filtered_entries:
+                # Create a unique key based on title and peer count
+                unique_key = (item["Title"].lower().strip(), item["Peers"])
+                if unique_key not in seen_entries:
+                    seen_entries.add(unique_key)
+                    deduplicated_entries.append(item)
+            
+            # Limit to top 20 results after deduplication (before resolving magnets)
+            top_entries = deduplicated_entries[:20]
+            
+            # Second pass: resolve magnets only for the top 20 results
+            results = []
+            for item in top_entries:
+                magnet = resolve_magnet(item["entry"])
+                if magnet:  # Only include entries with valid magnets
+                    results.append({
+                        "Title": item["Title"],
+                        "SizeGB": item["SizeGB"],
+                        "Seeders": item["Seeders"],
+                        "Peers": item["Peers"],
+                        "Magnet": magnet
+                    })
             
         except Exception as e:
             flash(f"Search failed: {str(e)}", "error")

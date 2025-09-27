@@ -409,7 +409,7 @@ systemctl --user enable mopidy
 systemctl --user start mopidy
 systemctl --user status mopidy
 
-# Scan
+# Scan (maybe more frequent)
 crontab -e
 0 3 * * * /usr/bin/mopidy local scan
 ```
