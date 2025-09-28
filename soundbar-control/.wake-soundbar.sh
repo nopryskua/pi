@@ -5,7 +5,6 @@
 STATUS=$(curl -s http://localhost:5050/power | jq -r '.power_status')
 
 if [ "$STATUS" = "false" ]; then
-    # Set pleasant volume
     curl -s -X POST http://localhost:5050/setup
 fi
 

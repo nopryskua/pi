@@ -1,6 +1,8 @@
 ## Build & Run Auth
 
-Note the local `.env` file that should contain `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from Spotify UI and later `SPOTIFY_REFRESH_TOKEN` from running `spotify-auth`.
+Note that this is not an active server but a run once image to get the exchange token.
+
+Note the local environment should contain `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from Spotify UI and later `SPOTIFY_REFRESH_TOKEN` from running `spotify-auth`.
 
 To get them follow the official Spotify documentation on authenticating a Spotify app.
 
