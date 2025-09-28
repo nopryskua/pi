@@ -1,1 +1,1 @@
-Experiment with music atlas
+Check spotify web api docs
