@@ -11,6 +11,9 @@ app = Flask(__name__)
 # Initialize OpenAI client
 client = OpenAI()
 
+previous_songs = []
+previous_intros = []
+
 class SongRecommendation(BaseModel):
     songSearch: str
     introduction: str
@@ -76,32 +79,65 @@ def setup_soundbar():
         print(f"Warning: Soundbar setup failed: {e}")
 
 
-def get_song_from_prompt(prompt: str, openai_api_key: str):
-    """Get song recommendation using official OpenAI library with Pydantic model"""
+def get_song_from_prompt(prompt: str):
+    """Get a song recommendation with context persistence and schema validation."""
+
+    # Build context for non-repetition
+    prev_songs_str = (
+        f"Previous recommendations: {', '.join(previous_songs[-30:])}.\n"
+        if previous_songs else ""
+    )
+    prev_intros_str = (
+        f"Previous introductions: {' | '.join(previous_intros[-30:])}.\n"
+        if previous_intros else ""
+    )
+
+    system_instructions = f"""
+You are a precise music recommender.
+Respond ONLY in JSON that validates against the schema.
+Rules for `songSearch`:
+- Track name and artist for Spotify search
+- No quotes, no 'by'
+- Example: Space Oddity David Bowie
+The `introduction` should prepare the listener emotionally with 2-3 poetic sentences mixed the most interesting information about the track and the author.
+].
+{prev_songs_str}{prev_intros_str}
+Do NOT repeat any previous song or introduction.
+"""
+
+    messages = [
+        {"role": "system", "content": system_instructions},
+        {"role": "user", "content": prompt},
+    ]
+
     try:
         response = client.responses.parse(
-            model="gpt-4o-mini",
-            input=f"""You are a music recommender.
-Given the user prompt: '{prompt}', respond ONLY in JSON with keys:
-- "songSearch": track name and artist suitable for Spotify search, no "by", no quotes, only keywords, e.g., "Space Oddity David Bowie"
-- "introduction": a short, inspiring description of the song that prepares the listener emotionally""",
+            model="gpt-5",
+            input=messages,
             text_format=SongRecommendation,
         )
-        
+
         return response.output_parsed.model_dump()
     except Exception as e:
-        raise RuntimeError(f"OpenAI API failed: {str(e)}")
+        raise RuntimeError(f"OpenAI API failed: {e}")
 
-
-def speak_text(text: str, openai_api_key: str, filename="intro.mp3"):
+def speak_text(text: str, filename="intro.mp3"):
     """Generate TTS audio using official OpenAI library"""
     try:
+
+        instructions = f"""
+Voice: Deep and resonant, with a velvety timbre that carries warmth and gravity. Each word feels grounded, like the voice of someone who has lived many lives and listens as deeply as they speak. But not snobby. Not too slow.
+Tone: Reflective and soulful, with a calm, measured delivery. Emphasizes serenity and emotional depth rather than excitement, guiding the listener into a contemplative atmosphere. But not too slow.
+Dialect: Neutral, clear, and articulate — no regionalisms. A subtle hint of poetic phrasing in everyday words, like a philosopher speaking casually but beautifully.
+Pronunciation: Smooth and deliberate, with rounded vowels and softly emphasized consonants. Slight elongation of key words to let them linger in the air, like notes of music.
+"""
+
         response = client.audio.speech.create(
-            model="tts-1-hd",
-            voice="onyx",  # deep, calm male voice
+            model="gpt-4o-mini-tts",
+            voice="verse",
             input=text,
+            instructions=instructions,
             response_format="mp3",
-            speed=0.95
         )
         
         with open(filename, "wb") as f:
@@ -204,11 +240,12 @@ def recommendation_endpoint():
         if not data or 'prompt' not in data:
             return jsonify({"error": "Missing prompt in request body"}), 400
         
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if not openai_key:
-            return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
-        
-        result = get_song_from_prompt(data['prompt'], openai_key)
+        result = get_song_from_prompt(data['prompt'])
+        song_query = result.get("songSearch")
+        introduction = result.get("introduction")
+        previous_songs.append(song_query)
+        previous_intros.append(introduction)
+
         return jsonify({"success": True, "recommendation": result})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -227,7 +264,7 @@ def tts_generate_endpoint():
             return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
         
         filename = data.get('filename', 'intro.mp3')
-        audio_file = speak_text(data['text'], openai_key, filename)
+        audio_file = speak_text(data['text'], filename)
         return jsonify({"success": True, "filename": audio_file})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -348,9 +385,12 @@ def complete_workflow_endpoint():
             return jsonify({"success": False, "error": "Missing OPENAI_API_KEY"}), 500
         
         try:
-            recommendation = get_song_from_prompt(prompt, openai_key)
+            recommendation = get_song_from_prompt(prompt)
             song_query = recommendation.get("songSearch")
             introduction = recommendation.get("introduction")
+            previous_songs.append(song_query)
+            previous_intros.append(introduction)
+
             print(f"✓ Song recommendation: {song_query}")
         except Exception as e:
             return jsonify({"success": False, "error": f"Song recommendation failed: {str(e)}"}), 500
@@ -358,7 +398,7 @@ def complete_workflow_endpoint():
         # Step 4: Generate TTS
         print("Step 4: Generating TTS...")
         try:
-            audio_file = speak_text(introduction, openai_key)
+            audio_file = speak_text(introduction)
             print(f"✓ TTS generated: {audio_file}")
         except Exception as e:
             return jsonify({"success": False, "error": f"TTS generation failed: {str(e)}"}), 500
