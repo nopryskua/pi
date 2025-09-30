@@ -1,7 +1,5 @@
-Check spotify web api docs
-
-Use pulsaudio in dj
+Use pulsaudio in dj (wishlist)
 
 Debug why playing spotify song sometimes briefly gaps
 
-Play multiple songs
+Track song play progress and play multiple songs with prefetching next song

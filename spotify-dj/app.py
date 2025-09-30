@@ -99,10 +99,10 @@ Rules for `songSearch`:
 - Track name and artist for Spotify search
 - No quotes, no 'by'
 - Example: Space Oddity David Bowie
-The `introduction` should prepare the listener emotionally with 2-3 poetic sentences mixed the most interesting information about the track and the author.
-].
+The `introduction` should prepare the listener emotionally with around 2 poetic sentences mixed with the most interesting information about the track and the author.
 {prev_songs_str}{prev_intros_str}
 Do NOT repeat any previous song or introduction.
+Ensure smooth transitioning from previous songs and introductions. The experience should create a feeling of an unfolding narrative.
 """
 
     messages = [
