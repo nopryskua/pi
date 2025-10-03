@@ -2,17 +2,16 @@ import os
 import requests
 import base64
 import pygame
+import time
 from flask import Flask, request, jsonify
 from openai import OpenAI
 from pydantic import BaseModel
+from typing import Tuple, List
 
 app = Flask(__name__)
 
 # Initialize OpenAI client
 client = OpenAI()
-
-previous_songs = []
-previous_intros = []
 
 class SongRecommendation(BaseModel):
     songSearch: str
@@ -79,7 +78,7 @@ def setup_soundbar():
         print(f"Warning: Soundbar setup failed: {e}")
 
 
-def get_song_from_prompt(prompt: str):
+def get_song_from_prompt(prompt: str, previous_songs: List[str], previous_intros: List[str]):
     """Get a song recommendation with context persistence and schema validation."""
 
     # Build context for non-repetition
@@ -150,26 +149,6 @@ Pronunciation: Smooth and deliberate, with rounded vowels and softly emphasized 
         raise RuntimeError(f"TTS failed: {str(e)}")
 
 
-def play_intro(filename: str):
-    """Play audio file using pygame"""
-    try:
-        # Check if file exists
-        if not os.path.exists(filename):
-            raise RuntimeError(f"File does not exist: {filename}")
-        
-        # Play audio with pygame
-        pygame.mixer.init()
-        pygame.mixer.music.load(filename)
-        pygame.mixer.music.play()
-        
-        # Wait for playback to complete
-        while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(10)
-        
-        pygame.mixer.quit()
-    except Exception as e:
-        raise RuntimeError(f"Audio playback failed: {e}")
-
 def play_intro(filename: str, volume: float = 1.0):
     """
     Play audio file using pygame, with full volume and no cropping.
@@ -210,7 +189,71 @@ def play_intro(filename: str, volume: float = 1.0):
     except Exception as e:
         raise RuntimeError(f"Audio playback failed: {e}")
 
+def spotify_play(song_query: str, spotify_token: str):
+    """Play a song on Spotify"""
+
+    headers = {"Authorization": f"Bearer {spotify_token}", "Content-Type": "application/json"}
+
+    # Get devices
+    devices_resp = requests.get("https://api.spotify.com/v1/me/player/devices", headers=headers)
+    devices = devices_resp.json().get("devices", [])
+    if not devices:
+        raise RuntimeError("No active devices")
+
+    device_id = devices[0]["id"]
+
+    # Search track
+    search_resp = requests.get(
+        "https://api.spotify.com/v1/search",
+        headers=headers,
+        params={"q": song_query, "type": "track", "limit": 1}
+    )
+    tracks = search_resp.json().get("tracks", {}).get("items", [])
+    if not tracks:
+        raise RuntimeError("No matching track found: {song_query}")
+
+    track = tracks[0]
+
+    # Play track
+    play_resp = requests.put(
+        "https://api.spotify.com/v1/me/player/play",
+        headers=headers,
+        params={"device_id": device_id},
+        json={"uris": [track["uri"]]}
+    )
+    if play_resp.status_code not in (200, 204):
+        raise RuntimeError(f"Play failed: {play_resp.text}")
+    
+    return track
+
+
+def is_playing(spotify_token: str):
+    """Check if something is playing on Spotify"""
+
+    headers = {"Authorization": f"Bearer {spotify_token}"}
+    
+    # Get current playback state
+    response = requests.get("https://api.spotify.com/v1/me/player", headers=headers)
+    
+    if response.status_code == 204:
+        return jsonify({"is_playing": False, "reason": "No active device"})
+    
+    if response.status_code != 200:
+        return jsonify({"is_playing": False, "error": f"Spotify API error: {response.text}"}), 500
+    
+    player_data = response.json()
+
+    return player_data.get("is_playing", False)
+
+
 # Individual workflow endpoints for debugging
+
+
+@app.route('/health', methods=['GET'])
+def health_endpoint():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy"})
+
 
 @app.route('/soundbar/setup', methods=['POST'])
 def soundbar_setup_endpoint():
@@ -240,11 +283,7 @@ def recommendation_endpoint():
         if not data or 'prompt' not in data:
             return jsonify({"error": "Missing prompt in request body"}), 400
         
-        result = get_song_from_prompt(data['prompt'])
-        song_query = result.get("songSearch")
-        introduction = result.get("introduction")
-        previous_songs.append(song_query)
-        previous_intros.append(introduction)
+        result = get_song_from_prompt(data['prompt'], [], [])
 
         return jsonify({"success": True, "recommendation": result})
     except Exception as e:
@@ -310,35 +349,8 @@ def spotify_play_endpoint():
             return jsonify({"error": "Missing song_query in request body"}), 400
         
         spotify_token = exchange_token()
-        headers = {"Authorization": f"Bearer {spotify_token}", "Content-Type": "application/json"}
 
-        # Get devices
-        devices_resp = requests.get("https://api.spotify.com/v1/me/player/devices", headers=headers)
-        devices = devices_resp.json().get("devices", [])
-        if not devices:
-            return jsonify({"success": False, "error": "No active devices"}), 400
-        device_id = devices[0]["id"]
-
-        # Search track
-        search_resp = requests.get(
-            "https://api.spotify.com/v1/search",
-            headers=headers,
-            params={"q": data['song_query'], "type": "track", "limit": 1}
-        )
-        tracks = search_resp.json().get("tracks", {}).get("items", [])
-        if not tracks:
-            return jsonify({"success": False, "error": "No matching track"}), 400
-        track = tracks[0]
-
-        # Play track
-        play_resp = requests.put(
-            "https://api.spotify.com/v1/me/player/play",
-            headers=headers,
-            params={"device_id": device_id},
-            json={"uris": [track["uri"]]}
-        )
-        if play_resp.status_code not in (200, 204):
-            return jsonify({"success": False, "error": f"Play failed: {play_resp.text}"}), 500
+        track = spotify_play(data['song_query'], spotify_token)
 
         return jsonify({
             "success": True,
@@ -350,179 +362,75 @@ def spotify_play_endpoint():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/workflow/complete', methods=['POST'])
-def complete_workflow_endpoint():
-    """Complete workflow: soundbar setup -> token exchange -> recommendation -> TTS -> play intro -> play song"""
-    try:
-        data = request.get_json()
-        if not data or 'prompt' not in data:
-            return jsonify({"error": "Missing prompt in request body"}), 400
-        
-        prompt = data['prompt']
-        print(f"Starting complete workflow for prompt: {prompt}")
-        
-        # Step 1: Setup soundbar
-        print("Step 1: Setting up soundbar...")
-        try:
-            setup_soundbar()
-            print("✓ Soundbar setup completed")
-        except Exception as e:
-            print(f"⚠ Soundbar setup failed: {e}")
-            # Continue anyway, soundbar setup is not critical
-        
-        # Step 2: Exchange token
-        print("Step 2: Exchanging token...")
-        try:
-            spotify_token = exchange_token()
-            print("✓ Token exchange completed")
-        except Exception as e:
-            return jsonify({"success": False, "error": f"Token exchange failed: {str(e)}"}), 500
-        
-        # Step 3: Get song recommendation
-        print("Step 3: Getting song recommendation...")
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if not openai_key:
-            return jsonify({"success": False, "error": "Missing OPENAI_API_KEY"}), 500
-        
-        try:
-            recommendation = get_song_from_prompt(prompt)
-            song_query = recommendation.get("songSearch")
-            introduction = recommendation.get("introduction")
-            previous_songs.append(song_query)
-            previous_intros.append(introduction)
-
-            print(f"✓ Song recommendation: {song_query}")
-        except Exception as e:
-            return jsonify({"success": False, "error": f"Song recommendation failed: {str(e)}"}), 500
-        
-        # Step 4: Generate TTS
-        print("Step 4: Generating TTS...")
-        try:
-            audio_file = speak_text(introduction)
-            print(f"✓ TTS generated: {audio_file}")
-        except Exception as e:
-            return jsonify({"success": False, "error": f"TTS generation failed: {str(e)}"}), 500
-        
-        # Step 5: Play intro audio
-        print("Step 5: Playing intro audio...")
-        try:
-            play_intro(audio_file)
-            print("✓ Intro audio played")
-        except Exception as e:
-            return jsonify({"success": False, "error": f"Intro audio playback failed: {str(e)}"}), 500
-        
-        # Step 6: Play song on Spotify
-        print("Step 6: Playing song on Spotify...")
-        try:
-            headers = {"Authorization": f"Bearer {spotify_token}", "Content-Type": "application/json"}
-
-            # Get devices
-            devices_resp = requests.get("https://api.spotify.com/v1/me/player/devices", headers=headers)
-            devices = devices_resp.json().get("devices", [])
-            if not devices:
-                return jsonify({"success": False, "error": "No active Spotify devices"}), 400
-            device_id = devices[0]["id"]
-
-            # Search track
-            search_resp = requests.get(
-                "https://api.spotify.com/v1/search",
-                headers=headers,
-                params={"q": song_query, "type": "track", "limit": 1}
-            )
-            tracks = search_resp.json().get("tracks", {}).get("items", [])
-            if not tracks:
-                return jsonify({"success": False, "error": "No matching track found"}), 400
-            track = tracks[0]
-
-            # Play track
-            play_resp = requests.put(
-                "https://api.spotify.com/v1/me/player/play",
-                headers=headers,
-                params={"device_id": device_id},
-                json={"uris": [track["uri"]]}
-            )
-            if play_resp.status_code not in (200, 204):
-                return jsonify({"success": False, "error": f"Spotify play failed: {play_resp.text}"}), 500
-            
-            print(f"✓ Song playing: {track['name']} by {track['artists'][0]['name']}")
-        except Exception as e:
-            return jsonify({"success": False, "error": f"Spotify playback failed: {str(e)}"}), 500
-        
-        # Success response
-        result = {
-            "success": True,
-            "message": "Complete workflow executed successfully",
-            "workflow_steps": [
-                "soundbar_setup",
-                "token_exchange", 
-                "song_recommendation",
-                "tts_generation",
-                "intro_playback",
-                "spotify_playback"
-            ],
-            "result": {
-                "prompt": prompt,
-                "song_query": song_query,
-                "introduction": introduction,
-                "track": track["name"],
-                "artist": track["artists"][0]["name"],
-                "tts_file": audio_file
-            }
-        }
-        
-        print("🎉 Complete workflow finished successfully!")
-        return jsonify(result)
-        
-    except Exception as e:
-        print(f"❌ Complete workflow failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": f"Workflow failed: {str(e)}"}), 500
-
-
-
-
 @app.route('/status', methods=['GET'])
 def status_endpoint():
     """Endpoint to check if something is playing on Spotify"""
     try:
         spotify_token = exchange_token()
-        headers = {"Authorization": f"Bearer {spotify_token}"}
-        
-        # Get current playback state
-        response = requests.get("https://api.spotify.com/v1/me/player", headers=headers)
-        
-        if response.status_code == 204:
-            return jsonify({"is_playing": False, "reason": "No active device"})
-        
-        if response.status_code != 200:
-            return jsonify({"is_playing": False, "error": f"Spotify API error: {response.text}"}), 500
-        
-        player_data = response.json()
-        is_playing = player_data.get("is_playing", False)
-        
-        result = {"is_playing": is_playing}
-        if is_playing and "item" in player_data:
-            track = player_data["item"]
-            result.update({
-                "track": track["name"],
-                "artist": track["artists"][0]["name"] if track["artists"] else "Unknown",
-                "progress_ms": player_data.get("progress_ms", 0),
-                "duration_ms": track.get("duration_ms", 0)
-            })
+
+        result = {"is_playing": is_playing(spotify_token)}
         
         return jsonify(result)
     except Exception as e:
         return jsonify({"is_playing": False, "error": str(e)}), 500
 
 
-@app.route('/health', methods=['GET'])
-def health_endpoint():
-    """Health check endpoint"""
-    return jsonify({"status": "healthy"})
+def _precompute(prompt: str, previous_songs: List[str], previous_intros: List[str]) -> Tuple[str, str, str]:
+    """Do everything except the play_intro/spotify_play bits."""
+
+    setup_soundbar()
+    spotify_token = exchange_token()
+    recommendation = get_song_from_prompt(prompt, previous_songs, previous_intros)
+    song_query = recommendation["songSearch"]
+    introduction = recommendation["introduction"]
+
+    # record history
+    previous_songs.append(song_query)
+    previous_intros.append(introduction)
+
+    # synthesize the spoken intro
+    audio_file = speak_text(introduction)
+
+    return song_query, audio_file, spotify_token
+
+
+@app.route('/serve', methods=['POST'])
+def serve():
+    """Infinifely fetch songs from the prompt and serve them"""
+
+    data = request.get_json()
+    if not data or 'prompt' not in data:
+        return jsonify({"error": "Missing prompt in request body"}), 400
+
+    prompt = data['prompt']
+
+    previous_songs = []
+    previous_intros = []
+
+    song, audio_file, token = _precompute(prompt, previous_songs, previous_intros)
+    done = True
+
+    while True:
+        try:
+            play_intro(audio_file)
+            spotify_play(song, token)
+
+            done = False
+
+            while is_playing(token):
+                if not done:
+                    song, audio_file, token = _precompute(prompt, previous_songs, previous_intros)
+                    done = True
+
+                time.sleep(2)
+
+            time.sleep(4)
+
+        except Exception as e:
+            print(f"Serve failed: {e}")
+            break
 
 
 if __name__ == "__main__":
     print("🎵 Starting Spotify DJ server on port 5555...")
     app.run(host='0.0.0.0', port=5555, debug=False)
-

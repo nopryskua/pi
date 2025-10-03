@@ -30,8 +30,11 @@ curl -X POST http://localhost:5555/spotify/play \
   -H "Content-Type: application/json" \
   -d '{"song_query": "Bohemian Rhapsody Queen"}'
 
-# Complete
-curl -X POST http://localhost:5555/workflow/complete \
+# 8. Playback status
+curl http://localhost:5555/status
+
+# All together
+curl -X POST http://localhost:5555/serve \
   -H "Content-Type: application/json" \
   -d '{"prompt": "I want something cosmic and ethereal"}'
 ```
