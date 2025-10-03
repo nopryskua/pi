@@ -424,7 +424,7 @@ def serve():
 
                 time.sleep(2)
 
-            time.sleep(4)
+            time.sleep(1)
 
         except Exception as e:
             print(f"Serve failed: {e}")

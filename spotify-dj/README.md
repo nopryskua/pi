@@ -17,7 +17,9 @@ docker run --rm \
   -e SPOTIFY_CLIENT_ID="$SPOTIFY_CLIENT_ID" \
   -e SPOTIFY_CLIENT_SECRET="$SPOTIFY_CLIENT_SECRET" \
   -e SPOTIFY_REFRESH_TOKEN="$SPOTIFY_REFRESH_TOKEN" \
-  --device /dev/snd \
+  -e PULSE_SERVER=unix:/run/user/1000/pulse/native \
+  -e SDL_AUDIODRIVER=pulseaudio \
+  -v /run/user/1000/pulse:/run/user/1000/pulse \
   spotify-dj
 ```
 
