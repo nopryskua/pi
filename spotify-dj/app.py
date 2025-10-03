@@ -1,3 +1,4 @@
+import threading
 import os
 import requests
 import base64
@@ -394,23 +395,23 @@ def _precompute(prompt: str, previous_songs: List[str], previous_intros: List[st
     return song_query, audio_file, spotify_token
 
 
-@app.route('/serve', methods=['POST'])
-def serve():
+# global variables to track the background task
+_bg_lock = threading.Lock()
+_bg_thread = None
+_stop_event = threading.Event()
+
+
+def _serve_loop(prompt: str):
     """Infinifely fetch songs from the prompt and serve them"""
 
-    data = request.get_json()
-    if not data or 'prompt' not in data:
-        return jsonify({"error": "Missing prompt in request body"}), 400
-
-    prompt = data['prompt']
-
+    _stop_event.clear()
     previous_songs = []
     previous_intros = []
 
     song, audio_file, token = _precompute(prompt, previous_songs, previous_intros)
     done = True
 
-    while True:
+    while not _stop_event.is_set():
         try:
             play_intro(audio_file)
             spotify_play(song, token)
@@ -418,6 +419,9 @@ def serve():
             done = False
 
             while is_playing(token):
+                if _stop_event.is_set():
+                    # TODO: Spotify stop
+                    break
                 if not done:
                     song, audio_file, token = _precompute(prompt, previous_songs, previous_intros)
                     done = True
@@ -429,6 +433,38 @@ def serve():
         except Exception as e:
             print(f"Serve failed: {e}")
             break
+
+
+@app.route('/serve', methods=['POST'])
+def serve():
+    data = request.get_json()
+    if not data or 'prompt' not in data:
+        return jsonify({"error": "Missing prompt"}), 400
+
+    prompt = data['prompt']
+
+    global _bg_thread
+    with _bg_lock:
+        # guardrail: are we already running?
+        if _bg_thread and _bg_thread.is_alive():
+            return jsonify({"error": "Already serving"}), 409
+
+        # start the background thread
+        _bg_thread = threading.Thread(target=_serve_loop, args=(prompt,))
+        _bg_thread.daemon = True
+        _bg_thread.start()
+
+    # immediately return to caller
+    return jsonify({"success": True, "message": "Service started"}), 202
+
+
+@app.route('/abort', methods=['POST'])
+def abort():
+    global _bg_thread
+    if _bg_thread and _bg_thread.is_alive():
+        _stop_event.set()
+        return jsonify({"success": True, "message": "Serve loop aborted"}), 200
+    return jsonify({"error": "No serve loop running"}), 400
 
 
 if __name__ == "__main__":

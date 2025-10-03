@@ -33,8 +33,11 @@ curl -X POST http://localhost:5555/spotify/play \
 # 8. Playback status
 curl http://localhost:5555/status
 
-# All together
+# Start
 curl -X POST http://localhost:5555/serve \
   -H "Content-Type: application/json" \
   -d '{"prompt": "I want something cosmic and ethereal"}'
+
+# Stop
+curl -X POST http://localhost:5555/abort
 ```
