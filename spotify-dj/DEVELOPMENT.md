@@ -33,11 +33,17 @@ curl -X POST http://localhost:5555/spotify/play \
 # 8. Playback status
 curl http://localhost:5555/status
 
-# Start
+# 9. Pause song
+curl -X POST http://localhost:5555/pause
+
+# 10. Resume song
+curl -X POST http://localhost:5555/resume
+
+# Start loop
 curl -X POST http://localhost:5555/serve \
   -H "Content-Type: application/json" \
   -d '{"prompt": "I want something cosmic and ethereal"}'
 
-# Stop
+# Stop loop
 curl -X POST http://localhost:5555/abort
 ```

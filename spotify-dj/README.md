@@ -1,6 +1,6 @@
 ## Build & Run
 
-Note that the following variables should be set - `OPENAI_API_KEY`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` from Spotify UI and `SPOTIFY_REFRESH_TOKEN` from running `spotify-auth`.
+Note that the following variables should be set - `OPENAI_API_KEY`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` from Spotify UI, `SPOTIFY_REFRESH_TOKEN` from running `spotify-auth`, and `SPOTIFY_DEVICE_ID` from running the Spotify devices endpoint.
 
 ### Build the Docker image
 
@@ -17,6 +17,7 @@ docker run --rm \
   -e SPOTIFY_CLIENT_ID="$SPOTIFY_CLIENT_ID" \
   -e SPOTIFY_CLIENT_SECRET="$SPOTIFY_CLIENT_SECRET" \
   -e SPOTIFY_REFRESH_TOKEN="$SPOTIFY_REFRESH_TOKEN" \
+  -e SPOTIFY_DEVICE_ID="$SPOTIFY_DEVICE_ID" \
   -e PULSE_SERVER=unix:/run/user/1000/pulse/native \
   -e SDL_AUDIODRIVER=pulseaudio \
   -v /run/user/1000/pulse:/run/user/1000/pulse \

@@ -9,6 +9,8 @@ from openai import OpenAI
 from pydantic import BaseModel
 from typing import Tuple, List
 
+SPOTIFY_DEVICE_ID = os.getenv("SPOTIFY_DEVICE_ID")
+
 app = Flask(__name__)
 
 # Initialize OpenAI client
@@ -27,6 +29,9 @@ def exchange_token():
     
     if not all([client_id, client_secret, refresh_token]):
         raise RuntimeError("Missing Spotify credentials")
+    
+    if not SPOTIFY_DEVICE_ID:
+        raise RuntimeError("Spotify device ID should be set")
     
     auth_string = f"{client_id}:{client_secret}"
     auth_bytes = auth_string.encode('ascii')
@@ -190,18 +195,33 @@ def play_intro(filename: str, volume: float = 1.0):
     except Exception as e:
         raise RuntimeError(f"Audio playback failed: {e}")
 
+def spotify_pause(spotify_token: str):
+    headers = {"Authorization": f"Bearer {spotify_token}", "Content-Type": "application/json"}
+
+    resp = requests.put(
+        "https://api.spotify.com/v1/me/player/pause",
+        headers=headers,
+        params={"device_id": SPOTIFY_DEVICE_ID}
+    )
+    if resp.status_code not in (200, 204):
+        raise RuntimeError(f"Pause failed: {resp.status_code} – {resp.text}")
+
+def spotify_resume(spotify_token: str):
+    headers = {"Authorization": f"Bearer {spotify_token}", "Content-Type": "application/json"}
+
+    resp = requests.put(
+        "https://api.spotify.com/v1/me/player/play",
+        headers=headers,
+        params={"device_id": SPOTIFY_DEVICE_ID}
+    )
+    if resp.status_code not in (200, 204):
+        raise RuntimeError(f"Resume failed: {resp.status_code} – {resp.text}")
+
+
 def spotify_play(song_query: str, spotify_token: str):
     """Play a song on Spotify"""
 
     headers = {"Authorization": f"Bearer {spotify_token}", "Content-Type": "application/json"}
-
-    # Get devices
-    devices_resp = requests.get("https://api.spotify.com/v1/me/player/devices", headers=headers)
-    devices = devices_resp.json().get("devices", [])
-    if not devices:
-        raise RuntimeError("No active devices")
-
-    device_id = devices[0]["id"]
 
     # Search track
     search_resp = requests.get(
@@ -219,7 +239,7 @@ def spotify_play(song_query: str, spotify_token: str):
     play_resp = requests.put(
         "https://api.spotify.com/v1/me/player/play",
         headers=headers,
-        params={"device_id": device_id},
+        params={"device_id": SPOTIFY_DEVICE_ID},
         json={"uris": [track["uri"]]}
     )
     if play_resp.status_code not in (200, 204):
@@ -362,6 +382,33 @@ def spotify_play_endpoint():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/spotify/pause', methods=['POST'])
+def spotify_pause_endpoint():
+    try:
+        spotify_token = exchange_token()
+
+        spotify_pause(spotify_token)
+
+        return jsonify({
+            "success": True,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/spotify/resume', methods=['POST'])
+def spotify_resume_endpoint():
+    """Play song on Spotify"""
+    try:
+        spotify_token = exchange_token()
+
+        spotify_resume(spotify_token)
+
+        return jsonify({
+            "success": True,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/status', methods=['GET'])
 def status_endpoint():
