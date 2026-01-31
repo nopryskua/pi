@@ -445,3 +445,5 @@ Host tpi
 	User nestor
 	HostName raspberrypi
 ```
+
+And services are available by the same hostname with the host.
