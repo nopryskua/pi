@@ -1,6 +1,6 @@
-Debug why spotifyd no longer outputs audio (or replace spotify)
+Debug why spotifyd no longer outputs audio (or replace with raspotify)
 
-Debug why playing spotify song sometimes briefly gaps (or replace spotify)
+Debug why playing spotify song sometimes briefly gaps (or replace with raspotify)
 
 Spotify stop
 
