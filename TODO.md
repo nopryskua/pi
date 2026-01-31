@@ -9,3 +9,5 @@ Simple text UI with prompt, pause, and abort
 Make iris redirect use URL from input to work from tailscale
 
 Replace PulseAudio with PipeWire
+
+Listening command API "play something nice" or "pause"
