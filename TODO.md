@@ -1,3 +1,6 @@
+
+Tailscale for my services
+
 Debug why spotifyd no longer outputs audio
 
 Debug why playing spotify song sometimes briefly gaps

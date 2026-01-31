@@ -415,3 +415,33 @@ crontab -e
 ```
 
 Now `http://pi:6680/iris` does the job.
+
+# Tailscale
+
+Register and install app on mac
+
+Then install on PI
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+```
+
+And run
+
+```bash
+sudo tailscale up
+```
+
+Check connected devices where second collumn will be hostname
+
+```bash
+tailscale status
+```
+
+Update local laptop `~/.ssh/config` to include the new way to connect
+
+```bash
+Host tpi
+	User nestor
+	HostName raspberrypi
+```
