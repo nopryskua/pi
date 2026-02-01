@@ -10,6 +10,8 @@ docker build -t spotify-dj .
 
 ### Run the server
 
+Note: It's not up to date since "pulseaudio" is replaced by pipewire (not fixing since spotifyd will be replaced)
+
 ```bash
 docker run --rm \
   --network host \

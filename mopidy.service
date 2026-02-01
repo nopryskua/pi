@@ -1,10 +1,10 @@
 [Unit]
 Description=Mopidy music server (User)
-After=network-online.target sound.target pulseaudio.service
+After=network-online.target sound.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/mopidy --config ~/.config/mopidy/mopidy.conf
+ExecStart=/usr/bin/mopidy --config %h/.config/mopidy/mopidy.conf
 Restart=on-failure
 RestartSec=5
 

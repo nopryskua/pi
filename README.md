@@ -254,25 +254,52 @@ if [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
 fi
 ```
 
-# PulseAudio
+# PipeWire
 
-For slightly better quality
+Install
 
 ```bash
-# Install
-sudo apt install pulseaudio pulseaudio-utils
+sudo apt update
+sudo apt install pipewire pipewire-audio pipewire-pulse wireplumber
+```
 
-# Since it's user service, linger
+Enable linger
+
+```bash
 sudo loginctl enable-linger nestor
-loginctl user-status nestor
+```
 
-# Enable
-systemctl --user enable pulseaudio.service
-systemctl --user enable pulseaudio.socket
-systemctl --user start pulseaudio.service
+Start services
 
-# Check
-systemctl --user status pulseaudio.service
+```bash
+systemctl --user enable pipewire pipewire-pulse wireplumber
+systemctl --user start pipewire pipewire-pulse wireplumber
+```
+
+Check
+
+```bash
+systemctl --user status pipewire
+systemctl --user status pipewire-pulse
+systemctl --user status wireplumber
+```
+
+Install check utils
+
+```bash
+sudo apt install pulseaudio-utils
+```
+
+Check
+
+```
+pactl info
+```
+
+Ensure proper volume
+
+```bash
+pactl set-sink-volume @DEFAULT_SINK@ 100%
 ```
 
 # Spotify
@@ -309,6 +336,8 @@ spotifyd --no-daemon --verbose --zeroconf-port=1234
 ```
 
 Now configure a service.
+
+Note: The server configuration is outdated since "pulseaudio" is replaced by "pipewire" (not fixing since spotifyd will be replaced)
 
 ```bash
 mkdir -p ~/.config/systemd/user
