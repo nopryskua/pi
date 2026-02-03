@@ -23,6 +23,7 @@ docker run --rm \
   -e PULSE_SERVER=unix:/run/user/1000/pulse/native \
   -e SDL_AUDIODRIVER=pulseaudio \
   -v /run/user/1000/pulse:/run/user/1000/pulse \
+  -e PYTHONUNBUFFERED=1 \
   spotify-dj
 ```
 

@@ -4,12 +4,29 @@ import requests
 import base64
 import pygame
 import time
+import sys
+import logging
 from flask import Flask, request, jsonify
 from openai import OpenAI
 from pydantic import BaseModel
 from typing import Tuple, List
 
+# Configure logging to ensure stdout is not buffered
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ],
+    force=True
+)
+
 SPOTIFY_DEVICE_ID = os.getenv("SPOTIFY_DEVICE_ID")
+
+# Helper function to ensure logs are flushed immediately
+def log(msg: str):
+    """Print message with immediate flush to ensure Docker logs visibility."""
+    print(msg, flush=True)
 
 app = Flask(__name__)
 
@@ -60,9 +77,9 @@ def setup_soundbar():
         # Call the /setup endpoint directly
         setup_response = requests.post("http://localhost:5050/setup")
         if setup_response.status_code != 200:
-            print(f"Warning: Failed to setup soundbar: {setup_response.text}")
+            log(f"Warning: Failed to setup soundbar: {setup_response.text}")
     except Exception as e:
-        print(f"Warning: Soundbar setup failed: {e}")
+        log(f"Warning: Soundbar setup failed: {e}")
 
 
 def get_song_from_prompt(prompt: str, previous_songs: List[str], previous_intros: List[str]):
@@ -138,7 +155,12 @@ Pronunciation: Smooth and deliberate, with rounded vowels and softly emphasized 
 
 def play_intro(filename: str, volume: float = 1.0):
     """
-    Play audio file using pygame, with full volume and no cropping.
+    Play audio file robustly using pygame with PipeWire/PulseAudio support.
+    Prevents audio flickering and dropout by:
+    - Pre-initializing mixer with stable sample rate (44.1 kHz)
+    - Using adequate buffer size (4096) to prevent underruns
+    - Waiting for mixer readiness before playback
+    - Not quitting mixer to avoid expensive re-initialization
     
     Args:
         filename: Path to the audio file.
@@ -148,31 +170,49 @@ def play_intro(filename: str, volume: float = 1.0):
         if not os.path.exists(filename):
             raise RuntimeError(f"File does not exist: {filename}")
 
-        # Initialize mixer early with a small buffer to avoid cropping
+        # Pre-initialize mixer with stable, compatible settings if not already done
+        # This prevents sample-rate mismatches that cause flickering
         if not pygame.mixer.get_init():
-            pygame.mixer.init(buffer=512)  # smaller buffer = less latency
+            try:
+                # Frequency: 44100 Hz (standard TTS rate)
+                # Size: -16 (signed 16-bit)
+                # Channels: 2 (stereo, safe for mono files)
+                # Buffer: 4096 (large enough to avoid underruns, small enough for latency)
+                pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
+                pygame.mixer.init()
+                log("Mixer initialized with 44100 Hz, 16-bit, stereo, buffer=4096")
+            except Exception as e:
+                log(f"Warning: pre_init failed, falling back to default: {e}")
+                pygame.mixer.init(buffer=4096)
 
-        # Stop anything that might be playing
-        pygame.mixer.music.stop()
+        # Stop any existing playback cleanly
+        if pygame.mixer.music.get_busy():
+            pygame.mixer.music.stop()
+            time.sleep(0.1)  # Brief pause to let stop complete
 
-        # Load and set volume before play
+        # Load the audio file
         pygame.mixer.music.load(filename)
-        pygame.mixer.music.set_volume(volume)
 
-        # Give the mixer a moment to prepare (prevents cropping)
-        pygame.time.delay(1000)
+        # Set volume
+        pygame.mixer.music.set_volume(max(0.0, min(1.0, volume)))
+
+        # Wait for mixer to be fully ready (reduces initial crackling)
+        time.sleep(0.2)
 
         # Start playback
         pygame.mixer.music.play()
+        log(f"Playing {filename} at volume {volume}")
 
-        # Wait until playback finishes
+        # Poll for completion with adaptive sleep to reduce CPU usage
+        clock = pygame.time.Clock()
         while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(20)
+            clock.tick(10)  # Lower tick rate (10 fps) to reduce overhead
 
-        # Clean up
+        # Stop cleanly but keep mixer alive for reuse
         pygame.mixer.music.stop()
-        pygame.mixer.quit()
-
+        log(f"Finished playing {filename}")
+    except pygame.error as e:
+        raise RuntimeError(f"Pygame audio error: {e}")
     except Exception as e:
         raise RuntimeError(f"Audio playback failed: {e}")
 
@@ -233,19 +273,29 @@ def is_playing(spotify_token: str):
     """Check if something is playing on Spotify"""
 
     headers = {"Authorization": f"Bearer {spotify_token}"}
-    
-    # Get current playback state
-    response = requests.get("https://api.spotify.com/v1/me/player", headers=headers)
-    
-    if response.status_code == 204:
-        return jsonify({"is_playing": False, "reason": "No active device"})
-    
-    if response.status_code != 200:
-        return jsonify({"is_playing": False, "error": f"Spotify API error: {response.text}"}), 500
-    
-    player_data = response.json()
 
-    return player_data.get("is_playing", False)
+    # Get current playback state; always return a boolean
+    try:
+        response = requests.get("https://api.spotify.com/v1/me/player", headers=headers, timeout=10)
+    except Exception as e:
+        log(f"[is_playing] Error fetching playback state: {e}")
+        return False
+
+    if response.status_code == 204:
+        # No active device
+        return False
+
+    if response.status_code != 200:
+        log(f"[is_playing] Spotify API error: {response.status_code} - {response.text}")
+        return False
+
+    try:
+        player_data = response.json()
+    except Exception as e:
+        log(f"[is_playing] Failed to parse Spotify response JSON: {e}")
+        return False
+
+    return bool(player_data.get("is_playing", False))
 
 
 # Individual workflow endpoints for debugging
@@ -316,27 +366,27 @@ def play_audio_endpoint():
     """Play audio file"""
     try:
         data = request.get_json()
-        print(f"Audio play request data: {data}")
+        log(f"Audio play request data: {data}")
         
         if not data or 'filename' not in data:
-            print("Error: Missing filename in request body")
+            log("Error: Missing filename in request body")
             return jsonify({"error": "Missing filename in request body"}), 400
         
         filename = data['filename']
-        print(f"Attempting to play file: {filename}")
+        log(f"Attempting to play file: {filename}")
         
         # Check if file exists
         if not os.path.exists(filename):
-            print(f"Error: File {filename} does not exist")
+            log(f"Error: File {filename} does not exist")
             return jsonify({"success": False, "error": f"File {filename} does not exist"}), 400
         
-        print(f"File exists, attempting to play: {filename}")
+        log(f"File exists, attempting to play: {filename}")
         play_intro(filename)
-        print(f"Successfully played: {filename}")
+        log(f"Successfully played: {filename}")
         
         return jsonify({"success": True, "message": f"Played {filename}"})
     except Exception as e:
-        print(f"Error in audio play endpoint: {str(e)}")
+        log(f"Error in audio play endpoint: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -407,19 +457,30 @@ def status_endpoint():
 def _precompute(prompt: str, previous_songs: List[str], previous_intros: List[str]) -> Tuple[str, str, str]:
     """Do everything except the play_intro/spotify_play bits."""
 
-    setup_soundbar()
+    log(f"\n[_precompute] Starting precompute with prompt: {prompt}")
+
+    log(f"[_precompute] Exchanging Spotify token...")
     spotify_token = exchange_token()
+
+    log(f"[_precompute] Requesting song recommendation from OpenAI...")
     recommendation = get_song_from_prompt(prompt, previous_songs, previous_intros)
     song_query = recommendation["songSearch"]
     introduction = recommendation["introduction"]
 
+    log(f"[_precompute] 📝 Song recommendation: {song_query}")
+    log(f"[_precompute] 📝 Introduction text: {introduction}")
+
     # record history
     previous_songs.append(song_query)
     previous_intros.append(introduction)
+    log(f"[_precompute] Recorded history (total songs: {len(previous_songs)})")
 
     # synthesize the spoken intro
+    log(f"[_precompute] Generating TTS audio from introduction...")
     audio_file = speak_text(introduction)
+    log(f"[_precompute] ✅ TTS generated: {audio_file}")
 
+    log(f"[_precompute] Precompute complete")
     return song_query, audio_file, spotify_token
 
 
@@ -432,35 +493,59 @@ _stop_event = threading.Event()
 def _serve_loop(prompt: str):
     """Infinifely fetch songs from the prompt and serve them"""
 
+    log(f"\n🎵 [_serve_loop] Starting serve loop with prompt: {prompt}")
     _stop_event.clear()
     previous_songs = []
     previous_intros = []
+
+    log(f"[_serve_loop] Setting up soundbar...")
+    setup_soundbar()
 
     song, audio_file, token = _precompute(prompt, previous_songs, previous_intros)
     done = True
 
     while not _stop_event.is_set():
         try:
+            log(f"\n[_serve_loop] 🔊 Playing intro: {audio_file}")
             play_intro(audio_file)
+            log(f"[_serve_loop] ✅ Intro playback complete")
+
+            time.sleep(3) # Sleeping between intro and music
+            log(f"[_serve_loop] ⏳ Waited 3s before starting Spotify...")
+
+            log(f"[_serve_loop] 🎶 Starting Spotify playback: {song}")
             spotify_play(song, token)
+            log(f"[_serve_loop] ✅ Spotify playback started")
+
+            time.sleep(30) # Waiting to start playing
+            log(f"[_serve_loop] ⏳ Waited 30s for song to start...")
 
             done = False
 
             while is_playing(token):
                 if _stop_event.is_set():
+                    log(f"[_serve_loop] 🛑 Stop event received, breaking playback loop")
+
                     # TODO: Spotify stop
                     break
                 if not done:
+                    log(f"[_serve_loop] Song still playing, precomputing next song...")
                     song, audio_file, token = _precompute(prompt, previous_songs, previous_intros)
                     done = True
+                    log(f"[_serve_loop] ✅ Next song precomputed and ready")
 
                 time.sleep(2)
 
+            log(f"[_serve_loop] Song finished, waiting 1s before next cycle...")
             time.sleep(1)
 
         except Exception as e:
-            print(f"Serve failed: {e}")
+            import traceback
+            log(f"\n❌ [_serve_loop] Serve failed: {e}")
+            traceback.print_exc()
             break
+
+    log(f"\n🛑 [_serve_loop] Serve loop ended")
 
 
 @app.route('/serve', methods=['POST'])
@@ -496,5 +581,7 @@ def abort():
 
 
 if __name__ == "__main__":
-    print("🎵 Starting Spotify DJ server on port 5555...")
-    app.run(host='0.0.0.0', port=5555, debug=False)
+    log("🎵 Starting Spotify DJ server on port 5555...")
+    sys.stdout.flush()
+    sys.stderr.flush()
+    app.run(host='0.0.0.0', port=5555, debug=False, use_reloader=False)
