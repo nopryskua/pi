@@ -1,0 +1,24 @@
+[Unit]
+Description=Spotify Connect (librespot)
+After=pipewire.service pipewire-pulse.service
+Requires=pipewire-pulse.service
+
+[Service]
+ExecStart=/usr/bin/librespot \
+  --name "PI" \
+  --device-type speaker \
+  --backend pulseaudio \
+  --bitrate 320 \
+  --format S16 \
+  --disable-audio-cache \
+  --disable-credential-cache \
+  --autoplay off \
+  --zeroconf-port 65444 \
+  --initial-volume 100 \
+  --quiet
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

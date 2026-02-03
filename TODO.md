@@ -1,4 +1,4 @@
-Replace spotifyd with raspotify and make spotify-dj work
+Make spotify-dj work
 
 Spotify stop
 

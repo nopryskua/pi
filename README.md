@@ -302,52 +302,47 @@ Ensure proper volume
 pactl set-sink-volume @DEFAULT_SINK@ 100%
 ```
 
-# Spotify
+# Raspotify
+
+Install
 
 ```bash
-wget https://github.com/Spotifyd/spotifyd/releases/download/v0.4.1/spotifyd-linux-aarch64-default.tar.gz
-tar -xvzf spotifyd-linux-aarch64-default.tar.gz
-sudo chmod +x spotifyd
-sudo mv spotifyd /usr/local/bin/
-sudo apt install libpulse0
-rm -rf spotifyd-linux-aarch64-default.tar.gz
+sudo apt-get -y install curl && curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 ```
 
+Check status
+
 ```bash
-# Allow mDNS (UDP 5353) from your LAN
+sudo systemctl status raspotify
+```
+
+Remove
+
+```bash
+sudo systemctl stop raspotify
+sudo systemctl disable raspotify
+sudo rm /lib/systemd/system/raspotify.service
+```
+
+Firewall
+
+```bash
 sudo ufw allow from 192.168.1.0/24 to any port 5353 proto udp
-
-# Allow zeroconf TCP port from your LAN (or some other port if configured differently)
-sudo ufw allow from 192.168.1.0/24 to any port 1234 proto tcp
+sudo ufw allow from 192.168.1.0/24 to any port 65444 proto tcp
 ```
 
-There is a need for a workaround to add the following line `/etc/hosts`.
+Install user service
 
 ```bash
-0.0.0.0                 apresolve.spotify.com
-```
-
-It's also necessary to add the same to AdGuard DNS overrides since it overrides the override.
-
-Then test the playback by using Spotify UI, selecting the new device, and playing a song.
-
-```bash
-spotifyd --no-daemon --verbose --zeroconf-port=1234
-```
-
-Now configure a service.
-
-Note: The server configuration is outdated since "pulseaudio" is replaced by "pipewire" (not fixing since spotifyd will be replaced)
-
-```bash
-mkdir -p ~/.config/systemd/user
-cp spotifyd.service ~/.config/systemd/user/
+cp raspotify.service ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable spotifyd.service
-systemctl --user start spotifyd.service
+systemctl --user enable --now raspotify.service
+```
 
-# Check
-systemctl --user status spotifyd.service
+Check status
+
+```bash
+systemctl --user status raspotify.service
 ```
 
 # AdGuard
