@@ -536,8 +536,8 @@ def _serve_loop(prompt: str):
 
                 time.sleep(2)
 
-            log(f"[_serve_loop] Song finished, waiting 1s before next cycle...")
-            time.sleep(1)
+            log(f"[_serve_loop] Song finished, waiting before next cycle...")
+            time.sleep(5)
 
         except Exception as e:
             import traceback
