@@ -1,7 +1,5 @@
-UI for spotify-dj
+UI for spotify-dj with prompt, pause, and abort
 
 Spotify stop
-
-Simple text UI with prompt, pause, and abort
 
 Listening command API "play something nice" or "pause"
