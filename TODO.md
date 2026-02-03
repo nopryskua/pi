@@ -1,4 +1,6 @@
-Make spotify-dj work
+Guard spotify DJ not to mix playing intro, turning on song, turning on song again, and waking soundbar
+
+Volume up intro, and make playing intro not to flicker
 
 Spotify stop
 

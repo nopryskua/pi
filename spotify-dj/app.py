@@ -57,29 +57,10 @@ def exchange_token():
 def setup_soundbar():
     """Setup soundbar - check power and set function to 6"""
     try:
-        # Check power status
-        power_response = requests.get("http://localhost:5050/power")
-        if power_response.status_code == 200:
-            power_status = power_response.json().get("power_status")
-            if not power_status:
-                # Turn on soundbar
-                setup_response = requests.post("http://localhost:5050/setup")
-                if setup_response.status_code != 200:
-                    print(f"Warning: Failed to turn on soundbar: {setup_response.text}")
-        
-        # Check current function
-        func_response = requests.get("http://localhost:5050/func")
-        if func_response.status_code == 200:
-            current_func = func_response.json().get("func")
-            if current_func != "6":
-                # Set function to 6
-                func_set_response = requests.post(
-                    "http://localhost:5050/func",
-                    headers={"Content-Type": "application/json"},
-                    json={"func": 6}
-                )
-                if func_set_response.status_code != 200:
-                    print(f"Warning: Failed to set soundbar function: {func_set_response.text}")
+        # Call the /setup endpoint directly
+        setup_response = requests.post("http://localhost:5050/setup")
+        if setup_response.status_code != 200:
+            print(f"Warning: Failed to setup soundbar: {setup_response.text}")
     except Exception as e:
         print(f"Warning: Soundbar setup failed: {e}")
 
