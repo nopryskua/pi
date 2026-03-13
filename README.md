@@ -471,3 +471,36 @@ Host tpi
 ```
 
 And services are available by the same hostname with the host.
+
+# File Browser
+
+Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
+```
+
+```bash
+sudo mkdir -p /var/lib/filebrowser
+sudo chown nestor:nestor /var/lib/filebrowser
+```
+
+Firewall
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 8080 proto tcp
+```
+
+Install user service
+
+```bash
+cp filebrowser.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now filebrowser.service
+```
+
+Check status
+
+```bash
+systemctl --user status filebrowser.service
+```

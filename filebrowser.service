@@ -1,0 +1,16 @@
+[Unit]
+Description=File Browser
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/filebrowser \
+  -r /var/lib/plexmediaserver/Movies \
+  -p 8080 \
+  -a 0.0.0.0 \
+  --noauth \
+  -d /var/lib/filebrowser/filebrowser.db
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
