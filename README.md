@@ -504,3 +504,21 @@ Check status
 ```bash
 systemctl --user status filebrowser.service
 ```
+
+# Claude Code
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+```
+claude --version
+```
+
+This should be enough to install.
+
+Then you'll be prompted to login.
